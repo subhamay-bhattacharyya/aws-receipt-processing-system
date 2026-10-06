@@ -96,8 +96,8 @@ Parameters:
 Resources:
   S3BucketNestedStack:
     Type: AWS::CloudFormation::Stack
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Metadata:
       com.aws.cloudformation.Context:
         why: "Invokes the nested S3 bucket CloudFormation template to create a versioned, encrypted S3 bucket with public access blocking and optional logging/website configuration"
