@@ -1,18 +1,7 @@
-[
-  {
-    "ParameterKey": "BucketBaseName",
-    "ParameterValue": "cfn-bucket"
-  },
-  {
-    "ParameterKey": "ProjectName",
-    "ParameterValue": "myproject"
-  },
-  {
-    "ParameterKey": "environment",
-    "ParameterValue": "devl"
-  },
-  {
-    "ParameterKey": "CiSuffix",
-    "ParameterValue": ""
-  }
-]
+{
+  "BucketBaseName": "cfn-bucket",
+  "ProjectName": "proj-ztc",
+  "Environment": "devl",
+  "KmsKey": "SB-KMS",
+  "CiSuffix": ""
+}

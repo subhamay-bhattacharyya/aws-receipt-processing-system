@@ -1,5 +1,5 @@
 environments:
-  ci: AWS-SCS-C03-SANDBOX
-  devl: AWS-SCS-C03-SANDBOX
+  ci: AWS-CFN-TEMPLATES
+  devl: AWS-CFN-TEMPLATES
 regions:
   - us-east-1
