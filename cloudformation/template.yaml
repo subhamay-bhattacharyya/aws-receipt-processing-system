@@ -10,7 +10,7 @@ Metadata:
         Parameters:
           - NestedStacksS3BucketName
       - Label:
-          default: "Platform Configuration"
+          default: "KMS Encryption"
         Parameters:
           - KmsKey
       - Label:
@@ -27,30 +27,39 @@ Metadata:
           - BillingMode
           - EnablePointInTimeRecovery
       - Label:
+          default: "Lambda IAM Role Configuration"
+        Parameters:
+          - LambdaBaseName
+          - LambdaRoleBaseName
+      - Label:
           default: "Advanced Configuration"
         Parameters:
           - CiSuffix
     ParameterLabels:
       NestedStacksS3BucketName:
         default: "S3 Bucket Name"
+      KmsKey:
+        default: "KMS Key (ARN / Alias)"
       ProjectName:
         default: "Project Name"
       BucketBaseName:
         default: "Bucket Base Name"
       Environment:
         default: "Environment"
-      KmsKey:
-        default: "KMS Key (ARN / Alias)"
       EnableBucketKey:
         default: "Enable S3 Bucket Key"
-      CiSuffix:
-        default: "CI Suffix"
       TableBaseName:
         default: "Table Base Name"
       BillingMode:
         default: "Billing Mode"
       EnablePointInTimeRecovery:
         default: "Enable Point-in-Time Recovery"
+      LambdaBaseName:
+        default: "Lambda Function Base Name"
+      LambdaRoleBaseName:
+        default: "Lambda Execution Role Name"
+      CiSuffix:
+        default: "CI Suffix"
 
 Parameters:
   NestedStacksS3BucketName:
@@ -100,11 +109,6 @@ Parameters:
     Default: devl
     Description: "Deployment environment for the S3 bucket"
 
-  CiSuffix:
-    Type: String
-    Default: ""
-    Description: "Optional CI suffix to append to the bucket name"
-
   TableBaseName:
     Type: String
     Default: "receipts-table"
@@ -129,6 +133,29 @@ Parameters:
       - "true"
       - "false"
     Description: "Enable point-in-time recovery for the DynamoDB table"
+
+  LambdaBaseName:
+    Type: String
+    Default: "receipt-processor"
+    MinLength: 1
+    MaxLength: 20
+    AllowedPattern: "^[a-z0-9-]+$"
+    ConstraintDescription: "Lambda base name must be 1-20 characters and contain only lowercase letters, numbers, and hyphens"
+    Description: "Base name for the Lambda function (project name, base name, environment, and region will be combined)"
+
+  LambdaRoleBaseName:
+    Type: String
+    Default: "receipt-processor-lambda-role"
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: "Lambda role base name must be 1-64 characters and contain only alphanumeric characters and hyphens"
+    Description: "Base name of the IAM role for Lambda function execution"
+
+  CiSuffix:
+    Type: String
+    Default: ""
+    Description: "Optional CI suffix to append to the bucket name"
 
 Conditions:
   HasKmsKey: !Not [!Equals [!Ref KmsKey, ""]]
@@ -196,6 +223,46 @@ Resources:
           Value: RootStack
       TimeoutInMinutes: 10
 
+  LambdaIAMRoleNestedStack:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Invokes the nested IAM role CloudFormation template to create an execution role for Lambda functions with permissions for S3, DynamoDB, and CloudWatch Logs"
+        must:
+          - "Nested template must be accessible at the specified S3 location"
+          - "IAM principal must have s3:GetObject permission on the template S3 bucket"
+          - "CloudFormation service must have permission to create IAM roles and inline policies"
+    Properties:
+      TemplateURL: !Sub "https://${NestedStacksS3BucketName}.s3.us-east-1.amazonaws.com/cfn-nested-aws-iam-roles-policies/template.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        RoleName: !Ref LambdaRoleBaseName
+        Environment: !Ref Environment
+        AssumeRolePrincipal: "lambda.amazonaws.com"
+        CiSuffix: !Ref CiSuffix
+        EnableLambdaBasicExecutionPolicy: "true"
+        EnableS3ReadOnlyPolicy: "true"
+        EnableDynamoDBReadWritePolicy: "true"
+        EnableTextractPolicy: "true"
+        EnableSESPolicy: "true"
+        EnableKMSPolicy: "true"
+        DynamoDBTableArn: !GetAtt ReceiptsDynamoDBNestedStack.Outputs.TableArn
+        S3BucketArn: !GetAtt S3BucketNestedStack.Outputs.S3BucketArn
+        LambdaFunctionArn: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function/${ProjectName}-${LambdaRoleBaseName}-${Environment}-${AWS::Region}"
+
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: LambdaExecutionRole
+        - Key: ManagedBy
+          Value: RootStack
+      TimeoutInMinutes: 5
+
 Outputs:
   NestedStackId:
     Description: "ID of the nested stack"
@@ -222,3 +289,18 @@ Outputs:
   ReceiptsDynamoDBTableArn:
     Description: "ARN of the DynamoDB table created by the nested stack"
     Value: !GetAtt ReceiptsDynamoDBNestedStack.Outputs.TableArn
+
+  LambdaExecutionRoleArn:
+    Description: "ARN of the Lambda execution role created by the nested stack"
+    Value: !GetAtt LambdaIAMRoleNestedStack.Outputs.RoleArn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaRoleArn"
+
+  LambdaExecutionRoleName:
+    Description: "Name of the Lambda execution role created by the nested stack"
+    Value: !GetAtt LambdaIAMRoleNestedStack.Outputs.RoleName
+
+  ComputedLambdaFunctionName:
+    Description: "Computed Lambda function name using project name, base name, environment, and region"
+    Value: !Sub "${ProjectName}-${LambdaBaseName}-${Environment}-${AWS::Region}"
+
