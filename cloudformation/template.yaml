@@ -13,6 +13,7 @@ Metadata:
           default: "KMS Encryption"
         Parameters:
           - KmsKey
+          - CWLogGroupKmsKey
       - Label:
           default: "S3 Bucket Configuration"
         Parameters:
@@ -20,6 +21,7 @@ Metadata:
           - BucketBaseName
           - Environment
           - EnableBucketKey
+          # - KeyPrefix
       - Label:
           default: "DynamoDB Table Configuration"
         Parameters:
@@ -40,6 +42,8 @@ Metadata:
         default: "S3 Bucket Name"
       KmsKey:
         default: "KMS Key (ARN / Alias)"
+      CWLogGroupKmsKey:
+        default: "CloudWatch Log Group KMS Key (ARN / Alias)"
       ProjectName:
         default: "Project Name"
       BucketBaseName:
@@ -48,6 +52,8 @@ Metadata:
         default: "Environment"
       EnableBucketKey:
         default: "Enable S3 Bucket Key"
+      # KeyPrefix:
+      #   default: "S3 Object Key Prefix"
       TableBaseName:
         default: "Table Base Name"
       BillingMode:
@@ -95,6 +101,13 @@ Parameters:
     AllowedPattern: "^(alias/[a-zA-Z0-9_-]+|arn:aws:kms:[a-z0-9-]+:[0-9]+:key/[a-zA-Z0-9-]+|[a-zA-Z0-9_-]+)?$"
     ConstraintDescription: "KMS Key can be a key name (e.g., my-key, auto-converted to alias/my-key), a KMS key alias (e.g., alias/my-key), or a full KMS key ARN (e.g., arn:aws:kms:region:account:key/key-id), or leave empty for no KMS encryption"
     Description: "Optional KMS Key for S3 bucket encryption. Accepts: key name (my-key), alias (alias/my-key), or ARN (arn:aws:kms:region:account:key/key-id). Plain key names are auto-converted to aliases."
+
+  CWLogGroupKmsKey:
+    Type: String
+    Default: "arn:aws:kms:us-east-1:269235677084:key/e691f177-0403-4b15-b9a7-50b57b204140"
+    AllowedPattern: "^(alias/[a-zA-Z0-9_-]+|arn:aws:kms:[a-z0-9-]+:[0-9]+:key/[a-zA-Z0-9-]+|[a-zA-Z0-9_-]+)?$"
+    ConstraintDescription: "KMS Key can be a key name (e.g., my-key, auto-converted to alias/my-key), a KMS key alias (e.g., alias/my-key), or a full KMS key ARN (e.g., arn:aws:kms:region:account:key/key-id), or leave empty for no KMS encryption"
+    Description: "Optional KMS Key for CloudWatch Logs encryption. Accepts: key name (my-key), alias (alias/my-key), or ARN (arn:aws:kms:region:account:key/key-id). Leave empty to use default encryption."
 
   EnableBucketKey:
     Type: String
@@ -152,6 +165,17 @@ Parameters:
     ConstraintDescription: "Lambda role base name must be 1-64 characters and contain only alphanumeric characters and hyphens"
     Description: "Base name of the IAM role for Lambda function execution"
 
+  # KeyPrefix:
+  #   Type: String
+  #   Default: "incoming/"
+  #   MaxLength: 1024
+  #   Description: "Optional S3 object key prefix (e.g., receipts/) that limits which uploads trigger the Lambda function. Leave empty to trigger on all objects."
+
+  # NotificationLambdaArn:
+  #   Type: String
+  #   Default: ""
+  #   Description: "ARN of the Lambda function that configures the S3 bucket notification (custom resource). Leave empty to skip the notification until the function exists."
+
   CiSuffix:
     Type: String
     Default: ""
@@ -159,6 +183,9 @@ Parameters:
 
 Conditions:
   HasKmsKey: !Not [!Equals [!Ref KmsKey, ""]]
+  HasCWLogGroupKmsKey: !Not [!Equals [!Ref CWLogGroupKmsKey, ""]]
+  HasCiSuffix: !Not [!Equals [!Ref CiSuffix, ""]]
+  # HasNotificationLambdaArn: !Not [!Equals [!Ref NotificationLambdaArn, ""]]
 
 Resources:
   S3BucketNestedStack:
@@ -204,7 +231,6 @@ Resources:
         ProjectName: !Ref ProjectName
         TableBaseName: !Ref TableBaseName
         Environment: !Ref Environment
-        CiSuffix: !Ref CiSuffix
         BillingMode: !Ref BillingMode
         PartitionKeyName: "receiptID"
         PartitionKeyType: "S"
@@ -212,6 +238,7 @@ Resources:
         SortKeyType: "S"
         EnablePointInTimeRecovery: !Ref EnablePointInTimeRecovery
         KmsKey: !If [HasKmsKey, !Ref KmsKey, ""]
+        CiSuffix: !Ref CiSuffix
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -222,6 +249,40 @@ Resources:
         - Key: ManagedBy
           Value: RootStack
       TimeoutInMinutes: 10
+
+  LambdaCWLogGroupNestedStack:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Invokes the nested CloudWatch Logs CloudFormation template to create a log group for Lambda functions"
+        must:
+          - "Nested template must be accessible at the specified S3 location"
+          - "IAM principal must have s3:GetObject permission on the template S3 bucket"
+          - "CloudFormation service must have permission to create CloudWatch Logs resources"
+    Properties:
+      TemplateURL: !Sub "https://${NestedStacksS3BucketName}.s3.us-east-1.amazonaws.com/cfn-nested-aws-cloudwatch-log-group/template.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        CustomLogGroupName: !If
+          - HasCiSuffix
+          - !Sub "/aws/lambda/${ProjectName}-${LambdaBaseName}-${Environment}-${AWS::Region}-${CiSuffix}"
+          - !Sub "/aws/lambda/${ProjectName}-${LambdaBaseName}-${Environment}-${AWS::Region}"
+        RetentionInDays: 14
+        KmsKeyIdOrAlias: !If [HasCWLogGroupKmsKey, !Ref CWLogGroupKmsKey, ""]
+        Environment: !Ref Environment
+        CiSuffix: !Ref CiSuffix
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: LambdaLogGroup
+        - Key: ManagedBy
+          Value: RootStack
+      TimeoutInMinutes: 5
 
   LambdaIAMRoleNestedStack:
     Type: AWS::CloudFormation::Stack
@@ -241,7 +302,6 @@ Resources:
         RoleName: !Ref LambdaRoleBaseName
         Environment: !Ref Environment
         AssumeRolePrincipal: "lambda.amazonaws.com"
-        CiSuffix: !Ref CiSuffix
         EnableLambdaBasicExecutionPolicy: "true"
         EnableS3ReadOnlyPolicy: "true"
         EnableDynamoDBReadWritePolicy: "true"
@@ -250,7 +310,8 @@ Resources:
         EnableKMSPolicy: "true"
         DynamoDBTableArn: !GetAtt ReceiptsDynamoDBNestedStack.Outputs.TableArn
         S3BucketArn: !GetAtt S3BucketNestedStack.Outputs.S3BucketArn
-        LambdaFunctionArn: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function/${ProjectName}-${LambdaRoleBaseName}-${Environment}-${AWS::Region}"
+        LambdaBasicExecutionLogGroupArn: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-${LambdaBaseName}-${Environment}-${AWS::Region}:*"
+        CiSuffix: !Ref CiSuffix
 
       Tags:
         - Key: Environment
@@ -262,6 +323,69 @@ Resources:
         - Key: ManagedBy
           Value: RootStack
       TimeoutInMinutes: 5
+
+  LambdaFunctionNestedStack:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    DependsOn:
+      - LambdaCWLogGroupNestedStack
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Invokes the nested Lambda function CloudFormation template to create the receipt processor function using the IAM execution role, log group, and DynamoDB table created by the other nested stacks"
+        must:
+          - "Nested template must be accessible at the specified S3 location"
+          - "IAM principal must have s3:GetObject permission on the template S3 bucket"
+          - "CloudFormation service must have permission to create Lambda functions"
+    Properties:
+      TemplateURL: !Sub "https://${NestedStacksS3BucketName}.s3.us-east-1.amazonaws.com/cfn-nested-aws-lambda-function/template.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        LambdaFunctionBaseName: !Ref LambdaBaseName
+        Environment: !Ref Environment
+        Runtime: "python3.12"
+        Handler: "index.lambda_handler"
+        MemorySize: "256"
+        Timeout: "60"
+        IAMRoleArn: !GetAtt LambdaIAMRoleNestedStack.Outputs.RoleArn
+        LambdaLogGroup: !Sub "/aws/lambda/${ProjectName}-${LambdaBaseName}-${Environment}-${AWS::Region}"
+        DynamoDBTableName: !GetAtt ReceiptsDynamoDBNestedStack.Outputs.TableName
+        CiSuffix: !Ref CiSuffix
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: LambdaFunction
+        - Key: ManagedBy
+          Value: RootStack
+      TimeoutInMinutes: 10
+
+  S3InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunctionNestedStack.Outputs.FunctionArn
+      Principal: s3.amazonaws.com
+      # Built from the name, not !GetAtt of the bucket, to avoid a circular dependency
+      SourceArn: !GetAtt S3BucketNestedStack.Outputs.S3BucketArn
+      SourceAccount: !Ref AWS::AccountId
+
+  # S3BucketNotification:
+  #   Type: Custom::S3Notification
+  #   Condition: HasNotificationLambdaArn
+  #   DeletionPolicy: Delete
+  #   UpdateReplacePolicy: Delete
+  #   DependsOn: S3InvokePermission
+  #   Metadata:
+  #     com.aws.cloudformation.Context:
+  #       why: "Configures the S3 bucket to invoke the receipt processor Lambda function on object creation, optionally filtered by key prefix. Custom resource because CloudFormation has no standalone bucket notification resource and the bucket is owned by the S3 nested stack."
+  #   Properties:
+  #     ServiceToken: !Ref NotificationLambdaArn
+  #     BucketName: !GetAtt S3BucketNestedStack.Outputs.S3BucketName
+  #     LambdaArn: !GetAtt LambdaFunctionNestedStack.Outputs.FunctionArn
+  #     KeyPrefix: !Ref KeyPrefix
 
 Outputs:
   NestedStackId:
@@ -293,14 +417,15 @@ Outputs:
   LambdaExecutionRoleArn:
     Description: "ARN of the Lambda execution role created by the nested stack"
     Value: !GetAtt LambdaIAMRoleNestedStack.Outputs.RoleArn
-    Export:
-      Name: !Sub "${AWS::StackName}-LambdaRoleArn"
 
   LambdaExecutionRoleName:
     Description: "Name of the Lambda execution role created by the nested stack"
     Value: !GetAtt LambdaIAMRoleNestedStack.Outputs.RoleName
+  
+  LambdaFunctionArn:
+    Description: "ARN of the Lambda function created by the nested stack"
+    Value: !GetAtt LambdaFunctionNestedStack.Outputs.FunctionArn
 
   ComputedLambdaFunctionName:
     Description: "Computed Lambda function name using project name, base name, environment, and region"
     Value: !Sub "${ProjectName}-${LambdaBaseName}-${Environment}-${AWS::Region}"
-

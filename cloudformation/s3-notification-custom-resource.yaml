@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'Creates the Lambda-backed custom resource function and its IAM role that configure the S3 bucket event notification for the receipt processor'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'proj-ztc'
+    Description: Project name to use as a prefix
+    MinLength: 1
+    MaxLength: 20
+    AllowedPattern: "^[a-z0-9-]+$"
+    ConstraintDescription: Project name must be lowercase letters, numbers, and hyphens only
+
+  Environment:
+    Type: String
+    Default: 'devl'
+    Description: Deployment environment
+    AllowedValues: [devl, stag, prod]
+
+  BucketArn:
+    Type: String
+    Description: ARN of the S3 bucket whose event notification this function configures (e.g., arn:aws:s3:::my-bucket)
+    AllowedPattern: "^arn:(aws[a-zA-Z-]*)?:s3:::[a-z0-9][a-z0-9.-]*[a-z0-9]$"
+    ConstraintDescription: Must be an S3 bucket ARN (e.g., arn:aws:s3:::my-bucket)
+
+  CiSuffix:
+    Type: String
+    Default: ''
+    Description: Optional suffix for CI/CD deployments (appended to resource names with hyphen)
+    AllowedPattern: "^[a-z0-9-]*$"
+    ConstraintDescription: CiSuffix must be lowercase letters, numbers, and hyphens only
+
+Conditions:
+  HasCiSuffix: !Not [!Equals [!Ref CiSuffix, '']]
+
+Resources:
+  S3NotificationFunctionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Execution role for the custom resource Lambda that configures the S3 bucket event notification"
+    Properties:
+      RoleName: !If
+        - HasCiSuffix
+        - !Sub '${ProjectName}-s3-notification-role-${Environment}-${AWS::Region}-${CiSuffix}'
+        - !Sub '${ProjectName}-s3-notification-role-${Environment}-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3BucketNotificationAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutBucketNotification
+                  - s3:GetBucketNotification
+                Resource: !Ref BucketArn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  S3NotificationFunction:
+    Type: AWS::Lambda::Function
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Custom resource handler that sets or clears the S3 bucket event notification pointing at the receipt processor Lambda, and reports the result to CloudFormation"
+    Properties:
+      FunctionName: !If
+        - HasCiSuffix
+        - !Sub '${ProjectName}-s3-notification-${Environment}-${AWS::Region}-${CiSuffix}'
+        - !Sub '${ProjectName}-s3-notification-${Environment}-${AWS::Region}'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt S3NotificationFunctionRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import urllib.request
+          import boto3
+
+          s3 = boto3.client('s3')
+
+
+          def send_response(event, context, status, reason='', physical_id=None):
+              body = json.dumps({
+                  'Status': status,
+                  'Reason': reason or 'See CloudWatch Logs: ' + context.log_stream_name,
+                  'PhysicalResourceId': physical_id,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': {}
+              }).encode('utf-8')
+              request = urllib.request.Request(event['ResponseURL'], data=body, method='PUT', headers={'Content-Type': ''})
+              urllib.request.urlopen(request, timeout=30)
+
+
+          def handler(event, context):
+              props = event['ResourceProperties']
+              bucket = props['BucketName']
+              physical_id = event.get('PhysicalResourceId', bucket + '-notification')
+              try:
+                  if event['RequestType'] == 'Delete':
+                      try:
+                          s3.put_bucket_notification_configuration(Bucket=bucket, NotificationConfiguration={})
+                      except s3.exceptions.NoSuchBucket:
+                          print('Bucket already deleted, nothing to clear')
+                  else:
+                      configuration = {
+                          'Id': 'receipt-upload-notification',
+                          'LambdaFunctionArn': props['LambdaArn'],
+                          'Events': ['s3:ObjectCreated:*']
+                      }
+                      if props.get('KeyPrefix'):
+                          configuration['Filter'] = {'Key': {'FilterRules': [{'Name': 'prefix', 'Value': props['KeyPrefix']}]}}
+                      s3.put_bucket_notification_configuration(
+                          Bucket=bucket,
+                          NotificationConfiguration={'LambdaFunctionConfigurations': [configuration]}
+                      )
+                  send_response(event, context, 'SUCCESS', physical_id=physical_id)
+              except Exception as error:
+                  print(json.dumps({'error': str(error)}))
+                  send_response(event, context, 'FAILED', reason=str(error), physical_id=physical_id)
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+Outputs:
+  FunctionArn:
+    Description: ARN of the custom resource Lambda function (pass to the root stack as NotificationLambdaArn)
+    Value: !GetAtt S3NotificationFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-S3NotificationFunctionArn'
+
+  FunctionName:
+    Description: Name of the custom resource Lambda function
+    Value: !Ref S3NotificationFunction
+
+  RoleArn:
+    Description: ARN of the IAM role used by the custom resource Lambda function
+    Value: !GetAtt S3NotificationFunctionRole.Arn

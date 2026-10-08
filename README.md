@@ -1,14 +1,19 @@
 # AWS Receipt Processing System
 
-[![Release](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/release.yaml/badge.svg)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![GitHub](https://img.shields.io/badge/GitHub-Action-blue?logo=github)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Issues](https://img.shields.io/github/issues/subhamay-bhattacharyya/aws-receipt-processing-system?color=yellow)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/issues)&nbsp;[![Last Commit](https://img.shields.io/github/last-commit/subhamay-bhattacharyya/aws-receipt-processing-system?color=green)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
+<!-- Row 1: Status - Most Important -->
+[![Release](https://img.shields.io/github/v/release/subhamay-bhattacharyya/aws-receipt-processing-system?label=Release)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/releases)&nbsp;[![Release Workflow](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/release.yaml/badge.svg)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/release.yaml)&nbsp;[![Issues](https://img.shields.io/github/issues/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/issues)&nbsp;[![Last Commit](https://img.shields.io/github/last-commit/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
 
-[![Languages](https://img.shields.io/badge/Languages-Python%20%7C%20YAML-blue)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Commits](https://img.shields.io/github/commit-activity/t/subhamay-bhattacharyya/aws-receipt-processing-system?color=blue)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
+<!-- Row 2: Code Quality -->
+[![Top Language](https://img.shields.io/badge/Languages-Python%20%7C%20YAML-blue)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Commits](https://img.shields.io/github/commit-activity/t/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
 
-[![CloudFormation](https://img.shields.io/badge/CloudFormation-IaC-orange?logo=amazon&logoColor=white)](https://aws.amazon.com/cloudformation/)&nbsp;[![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.ai/)
+<!-- Row 3: Tech Stack -->
+[![CloudFormation](https://img.shields.io/badge/CloudFormation-IaC-orange?logo=amazonaws&logoColor=white)](https://aws.amazon.com/cloudformation/)&nbsp;[![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.ai/)
 
-[![Files](https://img.shields.io/github/directory-file-count/subhamay-bhattacharyya/aws-receipt-processing-system?color=gray)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Repo Size](https://img.shields.io/github/repo-size/subhamay-bhattacharyya/aws-receipt-processing-system?color=blue)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Release Date](https://img.shields.io/github/release-date/subhamay-bhattacharyya/aws-receipt-processing-system?color=red)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/releases)
+<!-- Row 4: Repository Info -->
+[![Files](https://img.shields.io/github/directory-file-count/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Repo Size](https://img.shields.io/github/repo-size/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Release Date](https://img.shields.io/github/release-date/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/releases)
 
-[![Status](https://img.shields.io/badge/Status-In_Progress-yellow)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)
+<!-- Row 5: Custom Metrics -->
+[![Custom Endpoint](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/bsubhamay/468a63b8b6c664f86c2629edb0f4a282/raw/aws-receipt-processing-system.json)](https://gist.github.com/subhamay-bhattacharyya/468a63b8b6c664f86c2629edb0f4a282)
 
 ---
 
