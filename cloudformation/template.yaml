@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
-Description: 'Root CloudFormation template that invokes nested stacks for AWS Receipt Processing System (S3 storage, DynamoDB database)'
+Description: |
+  Root CloudFormation template for AWS Receipt Processing System. Creates:
+    - S3 bucket (versioned, public access blocked, optional KMS encryption)
+    - DynamoDB table for storing receipt metadata
+    - Lambda functions for processing receipts
+    - IAM roles for Lambda functions
+    - CloudWatch log groups with optional KMS encryption
 
 Metadata:
   AWS::CloudFormation::Interface:
