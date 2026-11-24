@@ -303,15 +303,6 @@ Resources:
         QueueEvent: "s3:ObjectCreated:*"
         QueueFilterPrefix: "inbound/"
         QueueFilterSuffix: ".pdf"
-        QueueEvent2: "s3:ObjectCreated:*"
-        QueueFilterPrefix2: "inbound/"
-        QueueFilterSuffix2: ".jpg"
-        QueueEvent3: "s3:ObjectCreated:*"
-        QueueFilterPrefix3: "inbound/"
-        QueueFilterSuffix3: ".jpeg" 
-        QueueEvent4: "s3:ObjectCreated:*"
-        QueueFilterPrefix4: "inbound/"
-        QueueFilterSuffix4: ".png"
       Tags:
         - Key: ManagedBy
           Value: RootStack
