@@ -70,10 +70,10 @@ flowchart LR
 | --- | --- | --- |
 | **S3 Bucket** | Stores receipt images/PDFs with versioning & encryption | ✅ Complete |
 | **DynamoDB Table** | Stores extracted receipt metadata | ✅ Complete |
-| **Lambda Function** | Orchestrates receipt processing workflow | 🏗️ Pending |
-| **Textract Integration** | Extracts text/data from receipts | 🏗️ Pending |
+| **Lambda Function** | Orchestrates receipt processing workflow | ✅ Complete |
+| **Textract Integration** | Extracts text/data from receipts | ✅ Complete |
 | **SES Notifications** | Sends email with extracted details | 🏗️ Pending |
-| **IAM Roles & Policies** | Cross-service permissions | 🏗️ Pending |
+| **IAM Roles & Policies** | Cross-service permissions | ✅ Complete |
 
 ---
 

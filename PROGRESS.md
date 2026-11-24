@@ -7,8 +7,8 @@
 - [x] Lambda Function
 - [x] SQS Queue
 - [x] S3 event notification
+- [x] Lambda code to extract text from pdf
 
 ## Pending
 
 - [ ] Amazon SES
-- [ ] Lambda code to extract text from pdf

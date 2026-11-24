@@ -261,7 +261,7 @@ Resources:
         TableBaseName: !Ref TableBaseName
         Environment: !Ref Environment
         BillingMode: !Ref BillingMode
-        PartitionKeyName: "receiptId"
+        PartitionKeyName: "receiptNo"
         PartitionKeyType: "S"
         SortKeyName: "receiptDate"
         SortKeyType: "S"
@@ -417,6 +417,7 @@ Resources:
       Parameters:
         ProjectName: !Ref ProjectName
         LambdaFunctionBaseName: !Ref LambdaBaseName
+        LambdaFunctionDescription: "Receipt processor Lambda function to extract and process receipt data and store it in DynamoDB"
         Environment: !Ref Environment
         Runtime: "python3.12"
         Handler: "lambda_function.handler"
