@@ -1,12 +1,14 @@
 # Completed
 
-- [x] AWS S3
-- [x] Amazon DynamoDB
+- [x] S3 Bucket
+- [x] DynamoDB Table
+- [x] CloudWatch Log Group
 - [x] IAM Roles & Policies
-- [x] AWS Lambda
+- [x] Lambda Function
+- [x] SQS Queue
+- [x] S3 event notification
 
 ## Pending
 
-- [ ] S3 event notification
-- [ ] Lambda code to extract text from pdf
 - [ ] Amazon SES
+- [ ] Lambda code to extract text from pdf

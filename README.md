@@ -1,7 +1,7 @@
-# AWS Receipt Processing System
+# Automated AWS Receipt Processing System
 
 <!-- Row 1: Status - Most Important -->
-[![Release](https://img.shields.io/github/v/release/subhamay-bhattacharyya/aws-receipt-processing-system?label=Release)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/releases)&nbsp;[![Release Workflow](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/release.yaml/badge.svg)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/release.yaml)&nbsp;[![Issues](https://img.shields.io/github/issues/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/issues)&nbsp;[![Last Commit](https://img.shields.io/github/last-commit/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
+[![Release](https://img.shields.io/github/v/release/subhamay-bhattacharyya/aws-receipt-processing-system?label=Release)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/releases)&nbsp;[![Release Workflow](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/ci.yaml/badge.svg)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/actions/workflows/release.yaml)&nbsp;[![Issues](https://img.shields.io/github/issues/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/issues)&nbsp;[![Last Commit](https://img.shields.io/github/last-commit/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
 
 <!-- Row 2: Code Quality -->
 [![Top Language](https://img.shields.io/badge/Languages-Python%20%7C%20YAML-blue)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system)&nbsp;[![Commits](https://img.shields.io/github/commit-activity/t/subhamay-bhattacharyya/aws-receipt-processing-system)](https://github.com/subhamay-bhattacharyya/aws-receipt-processing-system/commits)
@@ -26,14 +26,25 @@ An automated receipt processing pipeline that ingests receipt images/PDFs, extra
 ## Architecture
 
 ``` mermaid
-graph LR
-    User["👤 User"] -->|1. Upload| S3["📦 S3 Bucket"]
-    S3 -->|2. Trigger Event| Lambda["⚙️ Lambda"]
-    Lambda -->|3. Extract Text| Textract["🔍 Textract"]
-    Textract -->|4. Structured Data| Lambda
-    Lambda -->|5. Store| DynamoDB["💾 DynamoDB"]
-    Lambda -->|6. Notify| SES["📧 SES"]
-    
+flowchart LR
+    User["👤 User"] -->|Uploads receipt| S3
+
+    subgraph AWS["AWS Cloud"]
+        S3["📦 Amazon S3"]
+        Lambda["⚙️ AWS Lambda"]
+        Textract["🔍 Amazon Textract"]
+        DynamoDB["💾 Amazon DynamoDB"]
+        SES["📧 Amazon SES"]
+
+        S3 -->|"2. Trigger"| Lambda
+        Lambda -->|"3. Process"| Textract
+        Textract -->|"4. Data"| Lambda
+        Lambda -->|"5. Store"| DynamoDB
+        Lambda -->|"6. Notify"| SES
+    end
+
+    SES -->|Email notification| User
+
     style User fill:#e1f5ff
     style S3 fill:#fff3e0
     style Lambda fill:#f3e5f5
@@ -41,6 +52,15 @@ graph LR
     style DynamoDB fill:#e8f5e9
     style SES fill:#fce4ec
 ```
+
+### Steps
+
+1. The user uploads a receipt to S3.
+2. The S3 upload triggers the Lambda function.
+3. Lambda invokes Amazon Textract to extract data from the receipt.
+4. Textract returns structured data to Lambda.
+5. Lambda stores the processed data in the DynamoDB table.
+6. Lambda uses Amazon SES to send an email notification to the user.
 
 ---
 
