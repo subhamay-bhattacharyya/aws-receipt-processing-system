@@ -223,6 +223,7 @@ Resources:
         Environment: !Ref Environment
         CiSuffix: !Ref CiSuffix
         QueueType: "Standard"
+        KmsKey: !If [HasKmsKey, !Sub "alias/${KmsKey}", ""]
         VisibilityTimeout: !Ref SQSVisibilityTimeout
         S3BucketArn: 
           !If
@@ -296,11 +297,21 @@ Resources:
         EnableBucketKey: "true"
         Environment: !Ref Environment
         WebsiteConfiguration: "false"
+        EnableVersioning: "false"
         CiSuffix: !Ref CiSuffix
         QueueArn: !GetAtt SQSQueue.Outputs.QueueArn
         QueueEvent: "s3:ObjectCreated:*"
-        QueueFilterPrefix: "input-images/"
-        QueueFilterSuffix: ".jpg"
+        QueueFilterPrefix: "inbound/"
+        QueueFilterSuffix: ".pdf"
+        QueueEvent2: "s3:ObjectCreated:*"
+        QueueFilterPrefix2: "inbound/"
+        QueueFilterSuffix2: ".jpg"
+        QueueEvent3: "s3:ObjectCreated:*"
+        QueueFilterPrefix3: "inbound/"
+        QueueFilterSuffix3: ".jpeg" 
+        QueueEvent4: "s3:ObjectCreated:*"
+        QueueFilterPrefix4: "inbound/"
+        QueueFilterSuffix4: ".png"
       Tags:
         - Key: ManagedBy
           Value: RootStack
