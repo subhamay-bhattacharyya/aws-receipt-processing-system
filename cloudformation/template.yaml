@@ -95,7 +95,7 @@ Parameters:
 
   ProjectName:
     Type: String
-    Default: "proj-ztc"
+    Default: "ztc-proj"
     Description: "Project name to use as a bucket prefix"
     MinLength: 1
     MaxLength: 20

@@ -1,6 +1,6 @@
 {
   "BucketBaseName": "cfn-bucket",
-  "ProjectName": "proj-ztc",
+  "ProjectName": "ztc-proj",
   "Environment": "devl",
   "KmsKey": "SB-KMS",
   "CiSuffix": ""
