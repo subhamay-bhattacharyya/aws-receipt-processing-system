@@ -188,12 +188,14 @@ Parameters:
 
   SesSenderEmail:
     Type: String
+    Default: "subhamay.aws@gmail.com"
     AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
     ConstraintDescription: "SES sender must be a valid email address"
     Description: "Verified SES sender email address used by the Lambda function to send notifications"
 
   SesRecipientEmail:
     Type: String
+    Default: "subhamay.bhattacharyya@gmail.com"
     AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
     ConstraintDescription: "SES recipient must be a valid email address"
     Description: "Email address that receives notifications sent by the Lambda function"
@@ -303,6 +305,18 @@ Resources:
         QueueEvent: "s3:ObjectCreated:*"
         QueueFilterPrefix: "inbound/"
         QueueFilterSuffix: ".pdf"
+        QueueArn2: !GetAtt SQSQueue.Outputs.QueueArn
+        QueueEvent2: "s3:ObjectCreated:*"
+        QueueFilterPrefix2: "inbound/"
+        QueueFilterSuffix2: ".jpg"
+        QueueArn3: !GetAtt SQSQueue.Outputs.QueueArn
+        QueueEvent3: "s3:ObjectCreated:*"
+        QueueFilterPrefix3: "inbound/"
+        QueueFilterSuffix3: ".jpeg"
+        QueueArn4: !GetAtt SQSQueue.Outputs.QueueArn
+        QueueEvent4: "s3:ObjectCreated:*"
+        QueueFilterPrefix4: "inbound/"
+        QueueFilterSuffix4: ".png"
       Tags:
         - Key: ManagedBy
           Value: RootStack
@@ -405,7 +419,7 @@ Resources:
         LambdaFunctionBaseName: !Ref LambdaBaseName
         Environment: !Ref Environment
         Runtime: "python3.12"
-        Handler: "lambda.handler"
+        Handler: "lambda_function.handler"
         MemorySize: "256"
         Timeout: "60"
         IAMRoleArn: !GetAtt LambdaIAMRole.Outputs.RoleArn
