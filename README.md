@@ -81,29 +81,40 @@ flowchart LR
 
 ``` text
 .
+├── .claude/
+│   └── .skills/                     # Custom skills (contribution, github-ci-workflow, package-json, readme-md)
+├── .devcontainer/
+│   └── devcontainer.json            # Dev container setup
+├── .env/
+│   └── environments.yaml            # Environment configuration
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yaml                  # Template validation & deployment
+│   │   ├── claude.yaml              # Claude Code integration
+│   │   ├── claude-code-review.yaml  # Claude Code review
+│   │   ├── create-branch.yaml       # Issue-based branch automation
+│   │   ├── deploy.yaml              # CloudFormation stack deployment
+│   │   ├── deploy-lambda.yaml       # Lambda build and deployment
+│   │   ├── delete.yaml              # CloudFormation stack deletion
+│   │   ├── notify.yaml              # Slack notifications
+│   │   └── setup-environments.yaml  # AWS environment setup
+│   ├── ISSUE_TEMPLATE/              # Bug report and feature request templates
+│   ├── CODEOWNERS                   # Repository ownership
+│   ├── dependabot.yaml              # Dependency updates
+│   └── PULL_REQUEST_TEMPLATE.md     # PR template
 ├── cloudformation/
 │   ├── template.yaml                # Root CloudFormation stack
 │   ├── parameters.json              # Stack parameters
 │   └── stack-config.json            # Stack configuration
-├── .github/
-│   ├── workflows/
-│   │   ├── ci.yaml                  # Validation & deployment
-│   │   ├── release.yaml             # Semantic versioning
-│   │   ├── claude.yaml              # Claude Code integration
-│   │   └── create-branch.yaml       # Issue-based branch automation
-│   ├── CODEOWNERS                   # Repository ownership
-│   └── PULL_REQUEST_TEMPLATE.md     # PR template
+├── lambda/
+│   └── receipt-processor/
+│       ├── lambda.py                # Lambda handler
+│       ├── requirements.txt         # Python dependencies
+│       └── structured_logging/      # Structured logging package
 ├── scripts/
-│   └── plugins/
-│       ├── release.config.js        # Semantic-release configuration
-│       ├── analyze-commits.js       # Commit analysis
-│       ├── generate-notes.js        # Release notes generation
-│       └── (other plugins)          # Release automation scripts
-├── .claude/
-│   ├── settings.json                # Claude Code workspace settings
-│   └── .skills/                     # Custom skills
-├── .env/
-│   └── environments.yaml            # Environment configuration
+│   └── plugins/                     # Semantic-release plugins
+├── .gitattributes                   # Git attribute settings
+├── .gitignore                       # Git ignore rules
 ├── CLAUDE.md                        # Project guidelines
 ├── CONTRIBUTING.md                  # Contribution guidelines
 ├── CHANGELOG.md                     # Version history
