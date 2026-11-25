@@ -382,6 +382,7 @@ Resources:
         EnableTextractPolicy: "true"
         EnableDynamoDBReadWritePolicy: "true"
         EnableS3ReadOnlyPolicy: "true"
+        EnableSESPolicy: "true"
         S3BucketArn: !GetAtt S3Bucket.Outputs.S3BucketArn
         DynamoDBTableArn: !GetAtt DynamoDBTable.Outputs.TableArn
         SQSQueueArn: !GetAtt SQSQueue.Outputs.QueueArn
@@ -447,6 +448,63 @@ Resources:
           Value: RootStack
       TimeoutInMinutes: 10
 
+  SesRecipientEmailIdentity:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Invokes the nested SES email identity CloudFormation template to register SesSenderEmail as an SES email identity so the Lambda function can send email from it"
+        must:
+          - "Nested template must be accessible at the specified S3 location"
+          - "IAM principal must have s3:GetObject permission on the template S3 bucket"
+          - "CloudFormation service must have permission to create SES email identities"
+    Properties:
+      TemplateURL: !Sub "https://${NestedStacksS3BucketName}.s3.us-east-1.amazonaws.com/cfn-nested-aws-ses-email-identity/template.yaml"
+      Parameters:
+        SesEmailIdentity: !Ref SesRecipientEmail
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        CiSuffix: !Ref CiSuffix
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: SesEmailIdentity
+        - Key: ManagedBy
+          Value: RootStack
+      TimeoutInMinutes: 10
+
+  SesSenderEmailIdentity:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Invokes the nested SES email identity CloudFormation template to register SesSenderEmail as an SES email identity so the Lambda function can send email from it"
+        must:
+          - "Nested template must be accessible at the specified S3 location"
+          - "IAM principal must have s3:GetObject permission on the template S3 bucket"
+          - "CloudFormation service must have permission to create SES email identities"
+    Properties:
+      TemplateURL: !Sub "https://${NestedStacksS3BucketName}.s3.us-east-1.amazonaws.com/cfn-nested-aws-ses-email-identity/template.yaml"
+      Parameters:
+        SesEmailIdentity: !Ref SesSenderEmail
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        CiSuffix: !Ref CiSuffix
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Component
+          Value: SesEmailIdentity
+        - Key: ManagedBy
+          Value: RootStack
+      TimeoutInMinutes: 10
 
 Outputs:
   NestedStackId:

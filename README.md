@@ -72,7 +72,7 @@ flowchart LR
 | **DynamoDB Table** | Stores extracted receipt metadata | ✅ Complete |
 | **Lambda Function** | Orchestrates receipt processing workflow | ✅ Complete |
 | **Textract Integration** | Extracts text/data from receipts | ✅ Complete |
-| **SES Notifications** | Sends email with extracted details | 🏗️ Pending |
+| **SES Notifications** | Sends email with extracted details | ✅ Complete |
 | **IAM Roles & Policies** | Cross-service permissions | ✅ Complete |
 
 ---

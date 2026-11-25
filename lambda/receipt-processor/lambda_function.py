@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import BotoCoreError, ClientError
+import html
 import urllib.parse
 import logging
 import os
@@ -43,6 +44,8 @@ ses = boto3.client("ses")
 
 _environment = json.loads(os.environ["CUSTOM"])
 DYNAMODB_TABLE_NAME = _environment["DYNAMODB_TABLE_NAME"]
+SES_SENDER_EMAIL = _environment["SES_SENDER_EMAIL"]
+SES_RECIPIENT_EMAIL = _environment["SES_RECIPIENT_EMAIL"]
 _type_serializer = TypeSerializer()
 
 
@@ -76,18 +79,31 @@ def process_event(event: Any, context: Any) -> Any:
     """
     try:
         # ---- Logic to process the event (SQS-triggered) ----
+        s3_object_attributes = None
         for record in event["Records"]:
             body = record["body"]
             # The SQS body is a JSON string containing the S3 notification
             if isinstance(body, str):
                 body = json.loads(body)
 
+            # Not every message is an S3 notification. S3 sends an
+            # "s3:TestEvent" when event notifications are first configured.
+            if "Records" not in body:
+                logger.info(
+                    "Skipping non-S3 message: %s", body.get("Event", list(body.keys()))
+                )
+                continue
+
             for s3_record in body["Records"]:
                 bucket = s3_record["s3"]["bucket"]["name"]
                 key = urllib.parse.unquote_plus(s3_record["s3"]["object"]["key"])
-                e_tag = s3_record["s3"]["object"]["eTag"]
-                version_id = s3_record["s3"]["object"]["versionId"]
-                size = s3_record["s3"]["object"]["size"]
+                # Not every S3 notification carries these fields (e.g. versionId
+                # is absent when the bucket is unversioned, and deletes have no
+                # eTag/size), so read them optionally.
+                s3_object = s3_record["s3"]["object"]
+                e_tag = s3_object.get("eTag", "")
+                version_id = s3_object.get("versionId", "")
+                size = s3_object.get("size", 0)
                 event_time = s3_record["eventTime"]
                 s3_object_attributes = dict(
                     eTag=e_tag,
@@ -106,6 +122,10 @@ def process_event(event: Any, context: Any) -> Any:
                     else type(s3_object_attributes).__name__
                 ),
             )
+
+        if s3_object_attributes is None:
+            logger.info("No S3 records to process in this event")
+            return _response(200, {"skipped": "no S3 records"})
 
         return _response(200, s3_object_attributes)
 
@@ -340,10 +360,70 @@ def build_dynamodb_item(
             "size": object_attrs.get("size", 0),
             "eventTime": object_attrs.get("eventTime", ""),
             "versionId": object_attrs.get("versionId", ""),
+            "extractedAt": datetime.now(timezone.utc).isoformat(),
         },
-        "extractedAt": datetime.now(timezone.utc).isoformat(),
     }
     return document
+
+
+def send_email_notification(receipt_data: Dict[str, Any]) -> None:
+    """
+    Send an HTML email summarizing a stored receipt (item from
+    build_dynamodb_item()). Failures are logged and never raised, so a
+    mail problem does not fail the already-stored receipt.
+    """
+    try:
+        esc = lambda v: html.escape(str(v))  # receipt text is untrusted input
+        total = str(receipt_data.get("total", "")).lstrip("$")
+
+        items_html = ""
+        for line in receipt_data.get("lineItems", []):
+            name = line.get("item") or "Unknown Item"
+            amount = line.get("amount") or "N/A"
+            quantity = line.get("quantity") or "1"
+            items_html += (
+                f"<li>{esc(name)} - ${esc(amount)} x {esc(quantity)}</li>"
+            )
+        if not items_html:
+            items_html = "<li>No items detected</li>"
+
+        html_body = f"""
+        <html>
+        <body>
+            <h2>Receipt Processing Notification</h2>
+            <p><strong>Receipt ID:</strong> {esc(receipt_data.get("receiptNo", ""))}</p>
+            <p><strong>Vendor:</strong> {esc(receipt_data.get("storeName", ""))}</p>
+            <p><strong>Date:</strong> {esc(receipt_data.get("receiptDate", ""))}</p>
+            <p><strong>Total Amount:</strong> ${esc(total)}</p>
+            <p><strong>S3 Location:</strong> {esc(receipt_data.get("s3Path", ""))}</p>
+
+            <h3>Items:</h3>
+            <ul>
+                {items_html}
+            </ul>
+
+            <p>The receipt has been processed and stored in DynamoDB.</p>
+        </body>
+        </html>
+        """
+
+        ses.send_email(
+            Source=SES_SENDER_EMAIL,
+            Destination={"ToAddresses": [SES_RECIPIENT_EMAIL]},
+            Message={
+                "Subject": {
+                    "Data": (
+                        f"Receipt Processed: {receipt_data.get('storeName', '')}"
+                        f" - ${total}"
+                    )
+                },
+                "Body": {"Html": {"Data": html_body}},
+            },
+        )
+        logger.info("Email notification sent to %s", SES_RECIPIENT_EMAIL)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error("Error sending email notification: %s", exc)
+        logger.info("Continuing execution despite email error")
 
 
 def handler(event: Any, context: Any) -> Any:
@@ -360,6 +440,9 @@ def handler(event: Any, context: Any) -> Any:
 
     # _response() JSON-encodes the body, so decode it before reading fields
     s3_object_attributes = json.loads(result["body"])
+    if "bucketName" not in s3_object_attributes:
+        logger.info("Nothing to process; event contained no S3 records")
+        return {"skipped": True}
     bucket_name = s3_object_attributes["bucketName"]
     object_key = s3_object_attributes["objectKey"]
 
@@ -386,11 +469,13 @@ def handler(event: Any, context: Any) -> Any:
     put_dynamodb_item(item)
     logger.info(
         "Stored receipt %s from %s/%s in %s",
-        item["receiptId"],
+        item["receiptNo"],
         bucket_name,
         object_key,
         DYNAMODB_TABLE_NAME,
     )
+
+    send_email_notification(item)
 
     logger.info("Request %s finished", request_id)
     return item
